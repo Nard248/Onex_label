@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig host="164.92.124.254" id="c67009cb-3199-48b0-a36a-1571494d734f" keyPath="C:\Users\meloy\PycharmProjects\Onex\onex_label_reader.txt" port="2270" nameFormat="DESCRIPTIVE" username="root" useOpenSSHConfig="true" />
+    </configs>
+  </component>
+</project>
