@@ -19,11 +19,16 @@ def resize_image(path):
 def detect_text(path):
     from google.cloud import vision
     import io
-    address_ok = False;
-    user_code_ok = False;
-    track_ok = False;
+    response_json = {}
 
     address_variants = ['Ayre', 'Ayrie', 'Aire']
+
+    response_json['address'] = 'Not found'
+    response_json['user_code'] = 'Not found'
+    response_json['tracking_code'] = 'Not found'
+    response_json['status'] = 'Not Ok'
+    response_json['country_code'] = 'Not found'
+
     client = vision.ImageAnnotatorClient()
     with io.open(path, 'rb') as image_file:
         content = image_file.read()
@@ -31,52 +36,48 @@ def detect_text(path):
 
     response = client.text_detection(image=image)
     texts = response.text_annotations
-    response_json = {}
     for text in texts:
-        # print(text.description)
-        # print('next')
         text_ = text.description
         for address in address_variants:
-            if address.upper() in text_.upper() and not address_ok:
+            if address.upper() in text_.upper() and response_json['address'] == 'Not found':
                 response_json['address'] = 'Ok'
-                address_ok = True
-                break
         if 'RU' in text_ and len(text_) == 8:
-            response_json['User_code'] = text_
-            response_json['Country'] = 'RU'
-            user_code_ok = True
+            response_json['user_code'] = text_
+            response_json['country_code'] = 'RU'
         elif 'ARM' in text_ and len(text_) == 9:
-            response_json['User_code'] = text_
-            response_json['Country'] = 'ARM'
-            user_code_ok = True
-        elif 'GE' in text_ and len(text_) == 7:
-            response_json['User_code'] = text_
-            response_json['Country'] = 'GE'
-            user_code_ok = True
+            response_json['user_code'] = text_
+            response_json['country_code'] = 'ARM'
+        elif 'GE' in text_ and len(text_) == 7 and 'POSTAGE' not in text_:
+            response_json['user_code'] = text_
+            response_json['country_code'] = 'GE'
         elif 'TBS' in text_:
             if '_' in text_ and len(text_) == 11:
-                response_json['User_code'] = text_.replace('-', '')
-                response_json['Country'] = 'GE'
-                user_code_ok = True
+                response_json['user_code'] = text_.replace('-', '')
+                response_json['country_code'] = 'TBS'
             elif len(text_) == 10:
-                response_json['User_code'] = text_
-                response_json['Country'] = 'GE'
-                user_code_ok = True
+                response_json['user_code'] = text_
+                response_json['country_code'] = 'TBS'
 
-        # vertices = (['({},{})'.format(vertex.x, vertex.y)
-        #              for vertex in text.bounding_poly.vertices])
-
-        # print('bounds: {}'.format(','.join(vertices)))
     image_ = cv2.imread(path)
     decoded = decode(image_)
     tracks = []
     for i in range(len(decoded)):
         tracks.append(str(decoded[i].data.decode('utf-8')))
-    if len(decoded) != 0: track_ok = True
-
-    if track_ok and user_code_ok and address_ok:
+    # response_json['tracking_code_check'] = tracks
+    if len(tracks) == 0:
+        response_json['tracking_code'] = 'Not found'
+    else:
+        for track in tracks:
+            if '1Z' in track and response_json['tracking_code'] == 'Not found':
+                response_json['tracking_code'] = track
+        if len(decoded) == 3 and response_json['tracking_code'] == 'Not found':
+            response_json['tracking_code'] = tracks[1]
+        elif len(decoded) == 2 and response_json['tracking_code'] == 'Not found':
+            response_json['tracking_code'] = tracks[1]
+        elif len(decoded) == 1 and response_json['tracking_code'] == 'Not found':
+            response_json['tracking_code'] = tracks[0]
+    if response_json['address'] == 'Ok' and response_json['tracking_code'] != 'Not found' and response_json['user_code'] != 'Not found':
         response_json['status'] = 'Ok'
-        response_json['tracking'] = tracks
 
     if response.error.message:
         raise Exception(
